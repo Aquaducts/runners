@@ -14,15 +14,23 @@ pub struct RunnerAllowedContainer {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct RunnerBackend {
+    pub name: String,
+    pub image: String,
+    pub release: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Runner {
     pub containers: Vec<RunnerAllowedContainer>,
-    pub backend: String,
+    pub backend: RunnerBackend,
     pub container_whitelist: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     pub server: Server,
+    pub runner: Runner,
 }
 
 pub const CONFIG: Lazy<Config> = Lazy::new(|| {

@@ -10,13 +10,15 @@ pub mod lxc {
 }
 pub mod backends;
 pub mod config;
+pub mod docker;
+pub mod runner;
 
 use crate::config::CONFIG;
 use anyhow::Result;
-use common::websocket::WebsocketMessage;
+use common::websocket::{OpCodes, WebsocketMessage};
 use futures_util::{
     stream::{SplitSink, SplitStream},
-    StreamExt,
+    SinkExt, StreamExt,
 };
 use std::sync::Arc;
 use tokio::{
@@ -24,20 +26,21 @@ use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     sync::Mutex,
     task::JoinHandle,
+    time::Duration,
 };
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 
 /// Only used for the actual websocket connection. Otherwise, this struct is useless.
 pub struct WebsocketInner {
     pub reader: Arc<Mutex<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>>,
-    pub writer: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    pub writer: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
 
     pub outer_writer: UnboundedSender<WebsocketMessage>,
     pub outer_reader: Arc<Mutex<UnboundedReceiver<WebsocketMessage>>>,
 }
 
 impl WebsocketInner {
-    pub async fn listen(&self) -> JoinHandle<()> {
+    pub async fn start_listener(&self) -> JoinHandle<()> {
         let outer_writer = self.outer_writer.clone();
         let reader = self.reader.clone();
         tokio::spawn(async move {
@@ -51,6 +54,22 @@ impl WebsocketInner {
                         outer_writer.send(message).unwrap();
                     }
                 }
+            }
+        })
+    }
+
+    pub async fn start_writer(&self) -> JoinHandle<()> {
+        let outer_reader = self.outer_reader.clone();
+        let writer = self.writer.clone();
+        tokio::spawn(async move {
+            let mut writer = writer.lock().await;
+            let mut locked_reader = outer_reader.lock().await;
+
+            while let Some(to_write) = locked_reader.recv().await {
+                writer
+                    .send(Message::Text(serde_json::to_string(&to_write).unwrap()))
+                    .await
+                    .unwrap();
             }
         })
     }
@@ -77,7 +96,7 @@ impl Websocket {
 
         let inner_websocket_struct = WebsocketInner {
             reader: Arc::new(Mutex::new(reader)),
-            writer,
+            writer: Arc::new(Mutex::new(writer)),
             outer_reader: Arc::new(Mutex::new(reader_reader)),
             outer_writer: writer_writer,
         };
@@ -86,5 +105,32 @@ impl Websocket {
             reader: Arc::new(Mutex::new(writer_reader)),
             writer: reader_writer,
         })
+    }
+
+    pub async fn start_heartbeating(&self) -> JoinHandle<()> {
+        let writer = self.writer.clone();
+        tokio::spawn(async move {
+            loop {
+                writer
+                    .send(WebsocketMessage {
+                        op: OpCodes::HeartBeatAck,
+                        event: None,
+                    })
+                    .unwrap();
+                tokio::time::sleep(Duration::from_secs(10)).await;
+            }
+        })
+    }
+
+    pub fn send(&self, message: WebsocketMessage) -> Result<()> {
+        Ok(self.writer.send(message)?)
+    }
+
+    pub async fn start(&self) -> (JoinHandle<()>, JoinHandle<()>, JoinHandle<()>) {
+        (
+            self._inner.start_listener().await,
+            self._inner.start_writer().await,
+            self.start_heartbeating().await,
+        )
     }
 }

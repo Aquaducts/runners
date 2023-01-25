@@ -12,21 +12,40 @@ pub mod prelude {
     #[async_trait]
     pub trait Backend<'a> {
         type CreateResult;
-        async fn new(name: &'a str) -> Result<Self>
+        async fn new_async(_: &'a str) -> Result<Self>
         where
-            Self: Sized;
-        async fn create(
+            Self: Sized,
+        {
+            unimplemented!()
+        }
+        async fn create_async(
             &self,
-            image: Option<&'a str>,
-            release: Option<&'a str>,
-        ) -> Self::CreateResult;
+            _: &'a str,
+            _: &'a str,
+        ) -> Self::CreateResult {
+            unimplemented!()
+        }
+
+        fn new(_: &'a str) -> Result<Self>
+        where
+            Self: Sized,
+        {
+            unimplemented!()
+        }
+        fn create(&self, _: &'a str, _: &'a str) -> Self::CreateResult {
+            unimplemented!()
+        }
     }
 }
 
 pub mod lxc_prelude {
     pub use crate::{backends::prelude::*, lxc};
     pub use std::ptr::{null, null_mut};
-    pub fn str_to_cstr(string: &str) -> Result<*const i8> {
-        Ok(std::ffi::CString::new(string)?.as_ptr())
+
+    #[macro_export]
+    macro_rules! str_to_cstr {
+        ($s:expr) => {
+            std::ffi::CString::new($s).unwrap().as_ptr()
+        };
     }
 }

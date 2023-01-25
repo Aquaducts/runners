@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-common = { git = "https://github.com/Aquaducts/channel" }
+common = { git = "https://github.com/Aquaducts/channel", rev = "7fd6dfe093c3d40e483f9aa35587f426b9dc4279" }
 tokio-tungstenite = { default-features = false, features = [
     "connect",
 ], version = "0.18" }
@@ -16,6 +16,7 @@ tokio = { version = "1.22", default-features = false, features = [
     "sync",
     "fs",
     "io-util",
+    "process",
 ] }
 futures-util = { version = "0.3.25" }
 anyhow = "1.0.68"
@@ -25,6 +26,10 @@ serde_json = "1.0.91"
 toml = "0.5.10"
 bollard = "0.13.0"
 async-trait = "0.1.61"
+sudo = "0.6.0"
+tracing = "0.1.35"
+tracing-subscriber = "0.3.14"
+tar = "0.4.38"
 
 [build-dependencies]
 bindgen = "0.63.0"
