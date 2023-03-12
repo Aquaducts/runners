@@ -1,4 +1,4 @@
-use common::Job;
+use channel_common::models::Job;
 
 pub struct RunnerState {
     pub current_job: Option<Job>,

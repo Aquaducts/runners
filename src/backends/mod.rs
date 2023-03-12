@@ -18,11 +18,7 @@ pub mod prelude {
         {
             unimplemented!()
         }
-        async fn create_async(
-            &self,
-            _: &'a str,
-            _: &'a str,
-        ) -> Self::CreateResult {
+        async fn create_async(&self, _: &'a str, _: &'a str) -> Self::CreateResult {
             unimplemented!()
         }
 

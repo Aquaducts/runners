@@ -15,7 +15,7 @@ pub mod runner;
 
 use crate::config::CONFIG;
 use anyhow::Result;
-use common::websocket::{OpCodes, WebsocketMessage};
+use channel_common::websocket::{OpCodes, WebsocketMessage};
 use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
@@ -82,12 +82,13 @@ pub struct Websocket {
 }
 
 impl Websocket {
-    pub async fn new() -> Result<Self> {
+    pub async fn new(name: String, token: String) -> Result<Self> {
         let (stream, _) = connect_async(format!(
-            "ws://{}:{}/api/ws?name=runner1&password=runner1234",
+            "ws://{}:{}/runners/{name}/connect",
             CONFIG.server.host, CONFIG.server.port
         ))
-        .await?;
+        .await
+        .unwrap();
 
         let (writer, reader) = stream.split();
 
