@@ -59,64 +59,90 @@ async fn main() -> Result<()> {
                             continue;
                         };
 
+                        let backend = match data.pipeline.backend.clone().unwrap() {
+                            channel_common::models::PipelineBackend::Docker => "docker",
+                            channel_common::models::PipelineBackend::LXC => "lxc",
+                        };
+
+                        let image = match data.pipeline.image.clone() {
+                            Some(img) => img,
+                            None => CONFIG
+                                .runner
+                                .defaults
+                                .get(backend)
+                                .unwrap()
+                                .image
+                                .clone()
+                                .unwrap(),
+                        };
+
+                        let release = match data.pipeline.release.clone() {
+                            Some(img) => img,
+                            None => CONFIG
+                                .runner
+                                .defaults
+                                .get(backend)
+                                .unwrap()
+                                .release
+                                .clone()
+                                .unwrap(),
+                        };
+
                         /*****************************************************************************
                         THE FOLLOWING CODE WILL BE MOVED IN THE FUTURE. DO NOT DEPEND ON IT BEING HERE
                         *****************************************************************************/
-                        if &CONFIG.runner.backend.name.to_lowercase() == "docker" {
-                            println!("4");
-                            let container_name = format!("runner-{}-{}", "temp_value", data.job.id);
-                            let docker = Docker::new_async(&container_name).await?;
-                            println!("5");
-                            let container = docker
-                                .create_async(
-                                    &CONFIG.runner.backend.image,
-                                    &CONFIG.runner.backend.release,
-                                )
-                                .await?;
-                            let container_id = container.id;
-                            docker
+                        // if &CONFIG.runner.backend.name.to_lowercase() == "docker" {
+                        println!("4");
+                        let container_name = format!("runner-{}-{}", "temp_value", data.job.id);
+                        let docker = Docker::new_async(&container_name).await?;
+                        println!("5");
+                        let container = docker.create_async(&image, &release).await?;
+                        let container_id = container.id;
+                        docker
+                            ._inner
+                            .0
+                            .start_container::<String>(&container_id, None)
+                            .await?;
+                        println!("6");
+                        for step in &data.steps {
+                            println!("** RUNNING STEP: {:?} (#{})", step.name, step.id);
+                            let cmd = step.run.split(' ').collect::<Vec<&str>>();
+                            let exec = docker
                                 ._inner
                                 .0
-                                .start_container::<String>(&container_id, None)
+                                .create_exec(
+                                    &container_id,
+                                    CreateExecOptions::<&str> {
+                                        cmd: Some(cmd),
+                                        attach_stdout: Some(true),
+                                        attach_stderr: Some(true),
+                                        ..Default::default()
+                                    },
+                                )
                                 .await?;
-                            println!("6");
-                            for step in &data.steps {
-                                println!("** RUNNING STEP: {:?} (#{})", step.name, step.id);
-                                let cmd = step.run.split(' ').collect::<Vec<&str>>();
-                                let exec = docker
-                                    ._inner
-                                    .0
-                                    .create_exec(
-                                        &container_id,
-                                        CreateExecOptions::<&str> {
-                                            working_dir: Some("/usr/pieces"),
-                                            cmd: Some(cmd),
-                                            attach_stdout: Some(true),
-                                            attach_stderr: Some(true),
-                                            ..Default::default()
-                                        },
-                                    )
-                                    .await?;
-                                if let StartExecResults::Attached { mut output, .. } = docker
-                                    ._inner
-                                    .0
-                                    .start_exec(
-                                        &exec.id,
-                                        Some(StartExecOptions {
-                                            detach: true,
-                                            ..Default::default()
-                                        }),
-                                    )
-                                    .await?
-                                {
+                            let output = docker
+                                ._inner
+                                .0
+                                .start_exec(
+                                    &exec.id,
+                                    Some(StartExecOptions {
+                                        detach: false,
+                                        ..Default::default()
+                                    }),
+                                )
+                                .await
+                                .unwrap();
+
+                            match output {
+                                StartExecResults::Attached { mut output, .. } => {
                                     while let Some(Ok(msg)) = output.next().await {
                                         print!("{}", msg);
                                     }
-                                } else {
-                                    unreachable!();
                                 }
+                                _ => println!("WHAT: {output:?}"),
                             }
                         }
+                        // }
                     }
                 }
             }

@@ -30,7 +30,11 @@ impl<'a> Backend<'a> for Docker<'a> {
         let container_cfg = Config::<&str> {
             image: Some(&container_image),
             attach_stdout: Some(true),
-            cmd: Some(vec!["/usr/bin/git", "--help"]),
+            cmd: Some(vec![
+                "/usr/bin/git",
+                "clone",
+                "https://github.com/coder/blogs.git",
+            ]),
             tty: Some(true),
             working_dir: Some("/usr/"),
             ..Default::default()

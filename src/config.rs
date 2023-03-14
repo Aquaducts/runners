@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
@@ -8,23 +10,14 @@ pub struct Server {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct RunnerAllowedContainer {
-    pub image: String,
+pub struct Image {
+    pub image: Option<String>,
     pub release: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct RunnerBackend {
-    pub name: String,
-    pub image: String,
-    pub release: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Runner {
-    pub containers: Vec<RunnerAllowedContainer>,
-    pub backend: RunnerBackend,
-    pub container_whitelist: bool,
+    pub defaults: HashMap<String, Image>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
