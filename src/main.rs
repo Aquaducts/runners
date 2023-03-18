@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
         .init();
 
     sudo::escalate_if_needed().unwrap();
-    let websocket = Websocket::new("ibis1".to_string(), runner_token.clone()).await?;
+    let websocket = Websocket::new(CONFIG.runner.name.to_string(), runner_token.clone()).await?;
     let (_, _, _) = websocket.start().await;
 
     let mut reader = websocket.reader.lock().await;

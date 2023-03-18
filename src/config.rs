@@ -17,6 +17,7 @@ pub struct Image {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Runner {
+    pub name: String,
     pub defaults: HashMap<String, Image>,
 }
 
