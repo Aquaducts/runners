@@ -149,7 +149,7 @@ async fn main() -> Result<()> {
             channel_common::websocket::OpCodes::Hello => websocket.send(WebsocketMessage {
                 op: OpCodes::Identify,
                 event: Some(Box::new(Identify {
-                    name: "ibis1".to_string(),
+                    name: CONFIG.runner.name.to_string(),
                     token: runner_token.clone(),
                 })),
             })?,
